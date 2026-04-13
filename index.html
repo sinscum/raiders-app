@@ -632,75 +632,203 @@ async function loadGameWeek() {
   }
 }
 
-/* ── GAME DAY VIEW — shows last game when no game today ── */
+/* ── GAME DAY VIEW — dashboard style, fixed hero + scrollable stats ── */
 async function loadGameDay() {
-  const content = document.getElementById('team-content');
+  const teamPage = document.getElementById('page-team');
 
   async function renderGame(game, isRecap) {
-    const comp    = game.competitions[0];
-    const home    = comp.competitors.find(c=>c.homeAway==='home');
-    const away    = comp.competitors.find(c=>c.homeAway==='away');
-    const status  = isRecap
-      ? `Final · ${new Date(game.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}`
-      : (comp.status?.type?.shortDetail || comp.status?.type?.description || '');
-    const homeAbbr = home?.team?.abbreviation?.toLowerCase()||'';
-    const awayAbbr = away?.team?.abbreviation?.toLowerCase()||'';
+    const comp     = game.competitions[0];
+    const raiders  = comp.competitors.find(c=>c.id===RAIDERS_ID||c.team?.id===RAIDERS_ID);
+    const opp      = comp.competitors.find(c=>c.id!==RAIDERS_ID&&c.team?.id!==RAIDERS_ID);
+    const isLive   = comp.status?.type?.state === 'in';
+    const isFinal  = comp.status?.type?.state === 'post';
+    const statusTxt = isLive  ? 'LIVE'
+      : isFinal ? (isRecap ? 'LAST GAME · FINAL' : 'FINAL')
+      : 'UPCOMING';
+    const statusColor = isLive ? '#e05555' : isFinal ? 'var(--silver)' : '#B8962E';
+    const qtrClk = isLive
+      ? `${comp.status?.period ? ['Q1','Q2','Q3','Q4','OT'][comp.status.period-1]||'OT' : ''} · ${comp.status?.displayClock||''}`
+      : isFinal ? new Date(game.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
 
-    // Box score stats
-    let statsHTML = '';
-    try {
-      const bs = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${game.id}`).then(r=>r.json());
-      const rBox = bs.boxscore?.players?.find(p=>p.team?.id===RAIDERS_ID);
-      if (rBox) {
-        let rows = '';
-        for (const cat of rBox.statistics||[]) {
-          const top = cat.athletes?.[0];
-          if (!top) continue;
-          const name = top.athlete?.displayName || top.athlete?.shortName || '';
-          const val  = top.stats?.[1] ?? top.stats?.[0] ?? '';
-          rows += `<div class="stat-row"><span class="stat-label">${cat.name}</span><span class="stat-name">${name}</span><span class="stat-val">${val}</span></div>`;
-        }
-        if (rows) statsHTML = `<div class="t-section"><div class="t-label">Raiders Stats</div><div class="t-card">${rows}</div></div>`;
-      }
-    } catch(e) {}
+    const rScore = raiders?.score ?? '--';
+    const oScore = opp?.score ?? '--';
+    const rRec   = raiders?.records?.[0]?.summary || '';
+    const oRec   = opp?.records?.[0]?.summary || '';
+    const oppAbbr = (opp?.team?.abbreviation||'OPP').toLowerCase();
+    const venue  = comp.venue?.fullName || '';
+    const network = comp.broadcasts?.[0]?.names?.[0] || '';
+
+    // Replace team-content with fixed hero + scrollable body
+    const content = document.getElementById('team-content');
+    content.style.overflow = 'hidden';
+    content.style.display  = 'flex';
+    content.style.flexDirection = 'column';
+    content.style.padding  = '0';
 
     content.innerHTML = `
-      <div class="t-section">
-        <div class="t-label">${status}</div>
-        <div class="score-card">
-          <div class="score-teams">
-            <div class="score-team">
-              <img class="score-logo" src="${LOGO(awayAbbr)}" onerror="this.style.opacity=0.3">
-              <div class="score-abbr">${away?.team?.abbreviation||''}</div>
-              <div class="score-pts">${away?.score||0}</div>
-            </div>
-            <div class="score-sep">@</div>
-            <div class="score-team">
-              <img class="score-logo" src="${LOGO(homeAbbr)}" onerror="this.style.opacity=0.3">
-              <div class="score-abbr">${home?.team?.abbreviation||''}</div>
-              <div class="score-pts">${home?.score||0}</div>
-            </div>
+      <!-- SCORE HERO — fixed -->
+      <div style="flex-shrink:0;background:linear-gradient(180deg,#131313,#0a0a0a);border-bottom:0.5px solid #1f1f1f;padding:12px 16px 10px;position:relative;overflow:hidden">
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% -10%,rgba(165,172,175,.05),transparent 65%);pointer-events:none"></div>
+        <!-- Status row -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:8px">
+          <div style="width:6px;height:6px;border-radius:50%;background:${statusColor};${isLive?'animation:pulse 1s infinite':''}"></div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${statusColor}">${statusTxt}</div>
+          ${qtrClk ? `<div style="font-size:9px;color:var(--tm);letter-spacing:1px">${qtrClk}</div>` : ''}
+        </div>
+        <!-- Score row -->
+        <div style="display:flex;align-items:center;justify-content:center;width:72%;margin:0 auto">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:3px">
+            <img style="width:32px;height:32px;object-fit:contain;opacity:.9" src="https://a.espncdn.com/i/teamlogos/nfl/500-dark/lv.png" onerror="this.style.opacity=0.3">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:72px;font-weight:900;line-height:.85;color:var(--tp)">${rScore}</div>
+            <div style="font-size:9px;color:var(--tm);letter-spacing:1px">${rRec}</div>
+          </div>
+          <div style="padding:0 10px;font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;color:#2a2a2a;margin-top:10px">·</div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+            <img style="width:32px;height:32px;object-fit:contain;opacity:.7" src="${LOGO(oppAbbr)}" onerror="this.style.opacity=0.3">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:72px;font-weight:900;line-height:.85;color:var(--tm)">${oScore}</div>
+            <div style="font-size:9px;color:var(--tm);letter-spacing:1px">${oRec}</div>
           </div>
         </div>
+        <!-- Meta row -->
+        ${venue||network ? `<div style="display:flex;justify-content:center;gap:10px;margin-top:6px;font-size:9px;color:var(--tm);letter-spacing:1px;text-transform:uppercase;font-weight:600">
+          ${venue ? `<span style="color:var(--silver)">${venue}</span>` : ''}
+          ${network ? `<span>·</span><span style="color:var(--silver)">${network}</span>` : ''}
+        </div>` : ''}
       </div>
-      ${statsHTML}`;
+
+      <!-- SCROLLABLE STATS BODY -->
+      <div id="gd-scroll-body" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 20px">
+        <div class="loading-state" style="padding:40px 0"><div class="spinner"></div><span>Loading stats...</span></div>
+      </div>`;
+
+    // Load box score + standings async
+    const scrollBody = content.querySelector('#gd-scroll-body');
+    try {
+      const [bs, standRes] = await Promise.all([
+        fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${game.id}`).then(r=>r.json()),
+        fetch(`https://site.web.api.espn.com/apis/v2/sports/football/nfl/standings?region=us&lang=en&contentorigin=espn&type=0&level=3&sort=winpercent:desc,wins:desc,pointdifferential:desc`).then(r=>r.json()),
+      ]);
+
+      const oppTeamId = opp?.team?.id || opp?.id || '';
+      const rBox = bs.boxscore?.players?.find(p => String(p.team?.id) === String(RAIDERS_ID));
+      const oBox = bs.boxscore?.players?.find(p => String(p.team?.id) !== String(RAIDERS_ID));
+
+      const getCat = (box, kw) => box?.statistics?.find(s => s.name?.toLowerCase().includes(kw) || s.type?.toLowerCase().includes(kw));
+      const topAth = (box, kw, idx=0) => {
+        const cat = getCat(box, kw);
+        const a = cat?.athletes?.[idx];
+        if (!a) return null;
+        const ath = a.athlete || {};
+        const short = ath.firstName ? `${ath.firstName[0]}. ${ath.lastName||''}` : ath.displayName || '--';
+        return { name: short, id: ath.id, stats: a.stats||[], labels: cat?.labels||[] };
+      };
+      const yds  = a => a?.stats?.[1] || a?.stats?.[0] || '--';
+      const psub = a => a ? `${a.stats[0]||'--'} · ${a.stats[4]||0} INT` : '--';
+      const rsub = a => a ? `${a.stats[0]||'--'} CAR` : '--';
+      const resub= a => a ? `${a.stats[0]||'--'} REC · ${a.stats[2]||'--'} AVG` : '--';
+      const hs   = id => id ? `https://a.espncdn.com/i/headshots/nfl/players/full/${id}.png` : '';
+
+      const rQB = topAth(rBox,'pass'), oQB = topAth(oBox,'pass');
+      const rRB = topAth(rBox,'rush'), oRB = topAth(oBox,'rush');
+      const rWR = topAth(rBox,'receiv'), oWR = topAth(oBox,'receiv');
+
+      // Team stats
+      const tStat = (box, name) => box?.statistics?.find(s=>s.name===name)?.displayValue || '--';
+      const rPass = tStat(rBox,'netPassingYards')||tStat(rBox,'passingYards');
+      const oPass = tStat(oBox,'netPassingYards')||tStat(oBox,'passingYards');
+      const rRush = tStat(rBox,'rushingYards'), oRush = tStat(oBox,'rushingYards');
+      const rTOV  = tStat(rBox,'turnovers'),   oTOV  = tStat(oBox,'turnovers');
+      const rSack = tStat(rBox,'sacks'),        oSack = tStat(oBox,'sacks');
+
+      // Standings
+      const standings = parseStandings(standRes);
+
+      const divHTML = standings.length ? `
+        <div style="margin-bottom:16px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase;border-bottom:0.5px solid #1e1e1e;padding-bottom:4px;margin-bottom:8px">AFC West</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+            ${standings.map((t,i)=>{
+              const isMe = t.id===RAIDERS_ID||t.abbr==='lv';
+              const rec  = `${t.wins}-${t.losses}`;
+              return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 4px;border-radius:6px;background:${isMe?'rgba(165,172,175,.06)':'var(--s2)'};border:0.5px solid ${isMe?'rgba(165,172,175,.2)':'#222'}">
+                <div style="font-size:7px;font-weight:700;letter-spacing:2px;color:${i===0?'#B8962E':'var(--tm)'};text-transform:uppercase">#${i+1}</div>
+                <img style="width:22px;height:22px;object-fit:contain;opacity:${isMe?1:.6}" src="${LOGO(t.abbr)}" onerror="this.style.opacity=0.2">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:${isMe?'var(--silver)':'var(--tm)'}">${rec}</div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>` : '';
+
+      const plRow = (label, rA, oA, ySub) => `
+        <div style="display:grid;grid-template-columns:1fr 50px 1fr;gap:6px;align-items:center;padding:8px 0;border-bottom:0.5px solid #1a1a1a">
+          <div>
+            ${rA?.id ? `<img style="width:28px;height:21px;object-fit:cover;border-radius:2px;opacity:.85;margin-bottom:2px;display:block" src="${hs(rA.id)}" onerror="this.style.display='none'">` : ''}
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--tp);letter-spacing:.5px;line-height:1">${rA?.name||'--'}</div>
+            <div style="font-size:9px;color:var(--tm);margin-top:1px">${ySub(rA)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+            <div style="font-size:7px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase">${label}</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--silver);line-height:1">${yds(rA)}</div>
+            <div style="font-size:7px;color:var(--tm)">·</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--tm);line-height:1">${yds(oA)}</div>
+          </div>
+          <div style="text-align:right">
+            ${oA?.id ? `<img style="width:28px;height:21px;object-fit:cover;border-radius:2px;opacity:.75;margin-bottom:2px;display:block;margin-left:auto" src="${hs(oA.id)}" onerror="this.style.display='none'">` : ''}
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--tm);letter-spacing:.5px;line-height:1">${oA?.name||'--'}</div>
+            <div style="font-size:9px;color:var(--tm);margin-top:1px;text-align:right">${ySub(oA)}</div>
+          </div>
+        </div>`;
+
+      const tsRow = (label, rVal, oVal) => `
+        <div style="display:grid;grid-template-columns:1fr 80px 1fr;gap:4px;align-items:center;padding:5px 0;border-bottom:0.5px solid #1a1a1a">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--tp)">${rVal}</div>
+          <div style="font-size:8px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase;text-align:center">${label}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--tm);text-align:right">${oVal}</div>
+        </div>`;
+
+      scrollBody.innerHTML = `
+        ${divHTML}
+        <div style="margin-bottom:16px">
+          <div style="display:grid;grid-template-columns:1fr 50px 1fr;gap:6px;margin-bottom:6px">
+            <div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--silver);text-transform:uppercase">LAS VEGAS</div>
+            <div></div>
+            <div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase;text-align:right">${(opp?.team?.abbreviation||'OPP').toUpperCase()}</div>
+          </div>
+          ${plRow('PASS YDS', rQB, oQB, psub)}
+          ${plRow('RUSH YDS', rRB, oRB, rsub)}
+          ${plRow('REC YDS',  rWR, oWR, resub)}
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase;border-bottom:0.5px solid #1e1e1e;padding-bottom:4px;margin-bottom:4px">Team Stats</div>
+          <div style="display:grid;grid-template-columns:1fr 80px 1fr;gap:4px;margin-bottom:6px">
+            <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--silver);text-transform:uppercase">LV</div>
+            <div></div>
+            <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--tm);text-transform:uppercase;text-align:right">${(opp?.team?.abbreviation||'OPP').toUpperCase()}</div>
+          </div>
+          ${tsRow('PASS YDS', rPass, oPass)}
+          ${tsRow('RUSH YDS', rRush, oRush)}
+          ${tsRow('TURNOVERS', rTOV, oTOV)}
+          ${tsRow('SACKS', rSack, oSack)}
+        </div>`;
+
+    } catch(e) {
+      scrollBody.innerHTML = '<div style="padding:20px;text-align:center;font-size:13px;color:var(--tm)">Could not load stats.</div>';
+    }
   }
 
   try {
-    // Check for live/today game first
     const sb   = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard`).then(r=>r.json());
     const live  = sb.events?.find(e=>e.competitions?.[0]?.competitors?.some(c=>c.id===RAIDERS_ID));
     if (live) { await renderGame(live, false); return; }
 
-    // No game today — fetch last completed game from schedule
     const sched = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${RAIDERS_ID}/schedule?season=${statsYear()}`).then(r=>r.json());
     const completed = (sched.events||[]).filter(e=>e.competitions?.[0]?.status?.type?.state==='post');
     const last = completed[completed.length-1];
     if (last) { await renderGame(last, true); return; }
 
-    content.innerHTML = '<div class="loading-state"><span>No recent game data available.</span></div>';
+    document.getElementById('team-content').innerHTML = '<div class="loading-state"><span>No recent game data.</span></div>';
   } catch(e) {
-    content.innerHTML = '<div class="loading-state"><span>Could not load game data.</span></div>';
+    document.getElementById('team-content').innerHTML = '<div class="loading-state"><span>Could not load game data.</span></div>';
   }
 }
 
