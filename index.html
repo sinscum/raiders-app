@@ -12,68 +12,29 @@
   <title>Raider Nation Radio</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap');
-
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
-    :root {
-      --silver: #A5ACAF;
-      --s1: #111; --s2: #1a1a1a; --s3: #242424;
-      --tp: #F0F0F0; --tm: #888;
-    }
-
+    :root { --silver: #A5ACAF; --s1: #111; --s2: #1a1a1a; --s3: #242424; --tp: #F0F0F0; --tm: #888; }
     html, body { height: 100%; background: #000; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
-
-    #app {
-      font-family: 'Barlow', sans-serif;
-      background: var(--s1);
-      height: 100%; height: 100dvh;
-      max-width: 430px; margin: 0 auto;
-      display: flex; flex-direction: column;
-      overflow: hidden; position: relative;
-    }
-
+    #app { font-family: 'Barlow', sans-serif; background: var(--s1); height: 100%; height: 100dvh; max-width: 430px; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; position: relative; }
     .page { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
     .page.active { display: flex; }
 
     /* ── RADIO ── */
-    .radio-hero {
-      background: #0a0a0a;
-      display: flex; flex-direction: column; align-items: center;
-      padding: 20px 24px 18px;
-      padding-top: max(20px, env(safe-area-inset-top, 20px));
-      flex-shrink: 0; position: relative;
-    }
-    .radio-hero::after {
-      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, #A5ACAF33, transparent);
-    }
-
-    .logo-frame {
-      width: 120px; height: 120px; border-radius: 16px;
-      background: var(--s2); border: 1px solid #2a2a2a;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 14px; overflow: hidden; flex-shrink: 0;
-    }
-    .logo-frame img { width: 96px; height: 96px; object-fit: contain; }
-    .logo-fallback { font-family: 'Barlow Condensed', sans-serif; font-size: 48px; font-weight: 900; color: var(--silver); display: none; }
-
+    .radio-hero { background: #0a0a0a; display: flex; flex-direction: column; align-items: center; padding: 20px 24px 18px; padding-top: max(20px, env(safe-area-inset-top, 20px)); flex-shrink: 0; position: relative; }
+    .radio-hero::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, #A5ACAF33, transparent); }
+    .logo-frame { width: 140px; height: 140px; border-radius: 18px; background: var(--s2); border: 1px solid #2a2a2a; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; overflow: hidden; flex-shrink: 0; }
+    .logo-frame img { width: 114px; height: 114px; object-fit: contain; }
+    .logo-fallback { font-family: 'Barlow Condensed', sans-serif; font-size: 52px; font-weight: 900; color: var(--silver); display: none; }
     .station-name { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700; color: var(--tp); letter-spacing: 1px; text-transform: uppercase; text-align: center; margin-bottom: 4px; }
     .show-name  { font-size: 13px; color: var(--silver); text-align: center; font-weight: 500; margin-bottom: 2px; }
     .show-time  { font-size: 11px; color: var(--tm); text-align: center; }
     .lv-time    { font-size: 10px; color: #444; text-align: center; margin-top: 3px; }
-
     .live-badge { display: inline-flex; align-items: center; gap: 5px; background: #1a0000; border: 1px solid #ff3333; border-radius: 20px; padding: 3px 9px; font-size: 10px; font-weight: 600; color: #ff4444; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 10px; }
     .live-dot { width: 5px; height: 5px; background: #ff4444; border-radius: 50%; }
     .live-dot.pulsing { animation: pulse 1.4s ease-in-out infinite; }
-
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
     @keyframes spin  { to { transform: rotate(360deg); } }
-
-    .controls-area {
-      padding: 18px 36px 16px;
-      display: flex; flex-direction: column; align-items: center; gap: 18px;
-      flex-shrink: 0; border-bottom: 0.5px solid #1a1a1a;
-    }
+    .controls-area { padding: 18px 36px 16px; display: flex; flex-direction: column; align-items: center; gap: 18px; flex-shrink: 0; border-bottom: 0.5px solid #1a1a1a; }
     .main-controls { display: flex; align-items: center; justify-content: center; gap: 40px; }
     .ctrl-btn { background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--tm); padding: 8px; }
     .ctrl-btn svg { width: 30px; height: 30px; }
@@ -84,7 +45,6 @@
     .volume-row svg { width: 18px; height: 18px; color: var(--tm); flex-shrink: 0; }
     .volume-slider { flex: 1; -webkit-appearance: none; height: 3px; border-radius: 2px; background: #333; outline: none; }
     .volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--silver); cursor: pointer; }
-
     .schedule-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 14px 24px 12px; min-height: 0; }
     .schedule-label { font-size: 10px; font-weight: 600; color: var(--tm); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; flex-shrink: 0; }
     .schedule-list { flex: 1; overflow: hidden; }
@@ -95,12 +55,11 @@
     .sched-item.active .sched-time, .sched-item.active .sched-show { color: var(--silver); }
     .sched-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--silver); flex-shrink: 0; animation: pulse 1.4s ease-in-out infinite; }
 
-    /* ── NEWS & VIDEOS ── */
-    .news-page, .videos-page { background: var(--s1); }
+    /* ── NEWS ── */
+    .news-page, .videos-page, .team-page { background: var(--s1); }
     .page-header { padding: 16px 20px 12px; padding-top: max(16px, env(safe-area-inset-top, 16px)); border-bottom: 0.5px solid #1f1f1f; flex-shrink: 0; }
     .page-title { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; color: var(--tp); text-transform: uppercase; letter-spacing: 0.5px; }
     .news-list, .video-grid { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px 0; }
-
     .news-card { display: flex; gap: 12px; padding: 12px 20px; border-bottom: 0.5px solid #1a1a1a; cursor: pointer; text-decoration: none; }
     .news-card:active { background: var(--s2); }
     .news-thumb { width: 72px; height: 52px; border-radius: 8px; background: var(--s3); flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
@@ -110,10 +69,10 @@
     .news-source { font-size: 10px; font-weight: 600; color: var(--silver); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
     .news-headline { font-size: 13px; color: var(--tp); line-height: 1.4; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 3px; }
     .news-time { font-size: 11px; color: var(--tm); }
-
     .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; gap: 12px; color: var(--tm); font-size: 13px; }
     .spinner { width: 22px; height: 22px; border: 2px solid #2a2a2a; border-top-color: var(--silver); border-radius: 50%; animation: spin 0.8s linear infinite; }
 
+    /* ── VIDEOS ── */
     .video-card { padding: 12px 20px; border-bottom: 0.5px solid #1a1a1a; cursor: pointer; }
     .video-card:active { background: var(--s2); }
     .video-thumb-wrap { width: 100%; aspect-ratio: 16/9; border-radius: 10px; background: var(--s3); overflow: hidden; position: relative; margin-bottom: 8px; }
@@ -124,13 +83,74 @@
     .video-title { font-size: 13px; color: var(--tp); font-weight: 500; line-height: 1.4; margin-bottom: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .video-date { font-size: 11px; color: var(--tm); }
 
+    /* ── TEAM TAB ── */
+    .override-strip { display: flex; gap: 6px; padding: 10px 16px; background: #0a0a0a; border-bottom: 0.5px solid #1a1a1a; flex-shrink: 0; }
+    .ov-btn { flex: 1; padding: 6px 4px; background: #1a1a1a; border: 0.5px solid #2a2a2a; border-radius: 6px; color: var(--tm); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; font-family: 'Barlow', sans-serif; }
+    .ov-btn.active { background: #222; border-color: var(--silver); color: var(--silver); }
+    .team-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; }
+
+    /* shared team cards */
+    .t-section { margin-bottom: 20px; }
+    .t-label { font-size: 10px; font-weight: 600; color: var(--tm); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .t-card { background: var(--s2); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+
+    /* score card */
+    .score-card { background: var(--s2); border-radius: 12px; padding: 16px; margin-bottom: 10px; }
+    .score-teams { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .score-team { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+    .score-logo { width: 44px; height: 44px; object-fit: contain; }
+    .score-abbr { font-size: 11px; color: var(--tm); font-weight: 600; }
+    .score-pts { font-family: 'Barlow Condensed', sans-serif; font-size: 40px; font-weight: 900; color: var(--tp); line-height: 1; }
+    .score-sep { font-size: 13px; color: var(--tm); padding: 0 8px; }
+    .score-status { font-size: 11px; color: var(--silver); text-align: center; margin-top: 4px; }
+
+    /* stat row */
+    .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 0.5px solid #222; }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { font-size: 12px; color: var(--tm); }
+    .stat-val { font-size: 13px; color: var(--tp); font-weight: 600; }
+    .stat-name { font-size: 12px; color: var(--tp); font-weight: 500; }
+
+    /* standings */
+    .stand-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid #222; }
+    .stand-row:last-child { border-bottom: none; }
+    .stand-logo { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+    .stand-name { font-size: 13px; color: var(--tp); font-weight: 500; flex: 1; }
+    .stand-name.raiders { color: var(--silver); }
+    .stand-record { font-size: 12px; color: var(--tm); min-width: 40px; text-align: right; }
+    .stand-rank { font-size: 10px; color: var(--tm); min-width: 16px; text-align: center; }
+
+    /* draft picks */
+    .pick-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 0.5px solid #222; }
+    .pick-row:last-child { border-bottom: none; }
+    .pick-num { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--silver); min-width: 32px; }
+    .pick-info { flex: 1; min-width: 0; }
+    .pick-name { font-size: 13px; color: var(--tp); font-weight: 600; }
+    .pick-meta { font-size: 11px; color: var(--tm); margin-top: 2px; }
+    .pick-round { font-size: 10px; font-weight: 600; color: var(--tm); background: #2a2a2a; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
+
+    /* leader card */
+    .leader-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid #222; }
+    .leader-row:last-child { border-bottom: none; }
+    .leader-img { width: 36px; height: 36px; border-radius: 50%; background: var(--s3); object-fit: cover; flex-shrink: 0; }
+    .leader-info { flex: 1; min-width: 0; }
+    .leader-name { font-size: 13px; color: var(--tp); font-weight: 500; }
+    .leader-stat { font-size: 11px; color: var(--tm); }
+    .leader-val { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; color: var(--silver); }
+
+    /* afc west mini scores */
+    .afc-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 0.5px solid #222; }
+    .afc-row:last-child { border-bottom: none; }
+    .afc-teams { flex: 1; font-size: 12px; color: var(--tp); }
+    .afc-score { font-size: 13px; font-weight: 600; color: var(--silver); font-family: 'Barlow Condensed', sans-serif; }
+    .afc-status { font-size: 10px; color: var(--tm); min-width: 40px; text-align: right; }
+
     /* ── TAB NAV ── */
     .tab-nav { display: flex; background: #0a0a0a; border-top: 0.5px solid #1f1f1f; flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
-    .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 8px; background: none; border: none; cursor: pointer; color: var(--tm); font-family: 'Barlow', sans-serif; transition: color 0.15s; }
+    .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 4px; background: none; border: none; cursor: pointer; color: var(--tm); font-family: 'Barlow', sans-serif; transition: color 0.15s; }
     .tab-btn.active { color: var(--silver); }
-    .tab-btn svg { width: 22px; height: 22px; }
-    .tab-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-
+    .tab-btn svg { width: 21px; height: 21px; }
+    .tab-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
     audio { display: none; }
   </style>
 </head>
@@ -152,21 +172,16 @@
       <div class="lv-time"   id="lv-time"></div>
       <div class="live-badge"><div class="live-dot" id="live-dot"></div>Live</div>
     </div>
-
     <div class="controls-area">
       <div class="main-controls">
         <button class="ctrl-btn" title="Live — no seek">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" opacity="0.25">
-            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.46"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" opacity="0.25"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.46"/></svg>
         </button>
         <button class="play-btn" id="play-btn" onclick="togglePlay()">
           <svg id="play-icon" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
         </button>
         <button class="ctrl-btn" title="Live — no seek">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" opacity="0.25">
-            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 20 10.55"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" opacity="0.25"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 20 10.55"/></svg>
         </button>
       </div>
       <div class="volume-row">
@@ -175,7 +190,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
       </div>
     </div>
-
     <div class="schedule-wrap">
       <div class="schedule-label">Today's Schedule · Las Vegas Time</div>
       <div class="schedule-list" id="schedule-list"></div>
@@ -198,6 +212,19 @@
     </div>
   </div>
 
+  <!-- TEAM -->
+  <div class="page" id="page-team">
+    <div class="page-header"><div class="page-title" id="team-title">Raiders</div></div>
+    <div class="override-strip">
+      <button class="ov-btn" id="ov-draft"     onclick="setView('draft')">Draft</button>
+      <button class="ov-btn" id="ov-gameweek"  onclick="setView('gameweek')">Game Week</button>
+      <button class="ov-btn" id="ov-gameday"   onclick="setView('gameday')">Game Day</button>
+    </div>
+    <div class="team-scroll" id="team-content">
+      <div class="loading-state"><div class="spinner"></div><span>Loading...</span></div>
+    </div>
+  </div>
+
   <!-- TAB NAV -->
   <nav class="tab-nav">
     <button class="tab-btn active" id="tab-radio" onclick="switchTab('radio')">
@@ -212,6 +239,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
       <span class="tab-label">Videos</span>
     </button>
+    <button class="tab-btn" id="tab-team" onclick="switchTab('team')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+      <span class="tab-label">Team</span>
+    </button>
   </nav>
 </div>
 
@@ -221,6 +252,9 @@ const YT_KEY     = 'AIzaSyADrpI_gwQMWSnhl_RbIla5G08_Hjpe5W0';
 const YT_CHANNEL = 'UC1es5fp8FEK1L0EgHjCvmtQ';
 const RSS2JSON   = 'https://api.rss2json.com/v1/api.json?rss_url=';
 const LV_TZ      = 'America/Los_Angeles';
+const RAIDERS_ID = '13';
+const AFC_WEST   = { '13':'lv','12':'kc','24':'lac','7':'den' };
+const LOGO       = id => `https://a.espncdn.com/i/teamlogos/nfl/500-dark/${id}.png`;
 
 const SCHEDULE = [
   { show: 'The Morning Tailgate',  start: 7*60,  end: 10*60 },
@@ -230,104 +264,113 @@ const SCHEDULE = [
 ];
 
 const RSS_FEEDS = [
-  { url: 'https://www.raiders.com/rss/news',                                       label: 'Raiders.com'  },
-  { url: 'https://www.espn.com/espn/rss/nfl/news?teamId=13',                       label: 'ESPN Raiders' },
-  { url: 'https://profootballtalk.nbcsports.com/category/las-vegas-raiders/feed/', label: 'PFT'          },
+  { url: 'https://www.raiders.com/rss/news',              label: 'Raiders.com'  },
+  { url: 'https://www.espn.com/espn/rss/nfl/news?teamId=13', label: 'ESPN Raiders' },
 ];
 
 const audio = document.getElementById('radio-audio');
 audio.src = STREAM_URL;
 let playing = false;
+let currentView = null;
 
+/* ── TIME ── */
 function lvNowMinutes() {
   const s = new Date().toLocaleString('en-US', { timeZone: LV_TZ, hour: 'numeric', minute: 'numeric', hour12: false });
   const [h, m] = s.split(':').map(Number);
   return h * 60 + m;
 }
-
 function lvTimeDisplay() {
   return new Date().toLocaleString('en-US', { timeZone: LV_TZ, hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' });
 }
-
 function fmtPT(m) {
-  const h = Math.floor(m / 60), mn = m % 60, ap = h >= 12 ? 'pm' : 'am';
-  return `${h > 12 ? h - 12 : h || 12}:${String(mn).padStart(2, '0')}${ap}`;
+  const h = Math.floor(m/60), mn = m%60, ap = h>=12?'pm':'am';
+  return `${h>12?h-12:h||12}:${String(mn).padStart(2,'0')}${ap}`;
 }
 
+/* ── AUTO DETECT VIEW ── */
+function autoDetectView() {
+  const now = new Date();
+  const m = now.getMonth()+1, d = now.getDate();
+  // Draft: April 23-25 2026
+  if (m === 4 && d >= 23 && d <= 25) return 'draft';
+  // Game day detection handled async — default to gameweek
+  return 'gameweek';
+}
+
+/* ── SCHEDULE ── */
 function updateSchedule() {
   const now  = lvNowMinutes();
   const cur  = SCHEDULE.find(s => now >= s.start && now < s.end);
   const next = SCHEDULE.find(s => s.start > now);
-
   document.getElementById('current-show-name').textContent = cur ? cur.show : 'Raider Nation Radio';
   document.getElementById('current-show-time').textContent = cur
     ? (cur.sub || `${fmtPT(cur.start)} – ${fmtPT(cur.end)} PT`)
-    : next
-      ? `Next: ${next.show} at ${fmtPT(next.start)} PT`
-      : 'Programming resumes 7:00am PT';
+    : next ? `Next: ${next.show} at ${fmtPT(next.start)} PT`
+    : 'Programming resumes 7:00am PT';
   document.getElementById('lv-time').textContent = `Las Vegas: ${lvTimeDisplay()}`;
-
   document.getElementById('schedule-list').innerHTML = SCHEDULE.map(s => {
     const active = cur && cur.show === s.show;
-    return `<div class="sched-item${active ? ' active' : ''}">
+    return `<div class="sched-item${active?' active':''}">
       <span class="sched-time">${fmtPT(s.start)} – ${fmtPT(s.end)}</span>
       <span class="sched-show">${s.show}</span>
-      ${active ? '<div class="sched-dot"></div>' : ''}
+      ${active?'<div class="sched-dot"></div>':''}
     </div>`;
   }).join('');
 }
 
+/* ── RADIO ── */
 function togglePlay() {
   if (playing) {
-    audio.pause();
-    playing = false;
+    audio.pause(); playing = false;
     document.getElementById('play-icon').innerHTML = '<path d="M5 3l14 9-14 9V3z"/>';
     document.getElementById('live-dot').classList.remove('pulsing');
   } else {
-    audio.play().catch(() => {});
+    audio.play().catch(()=>{});
     playing = true;
     document.getElementById('play-icon').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
     document.getElementById('live-dot').classList.add('pulsing');
   }
 }
+function setVolume(v) { audio.volume = v/100; }
 
-function setVolume(v) { audio.volume = v / 100; }
-
+/* ── TABS ── */
 function switchTab(tab) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-' + tab).classList.add('active');
-  document.getElementById('tab-' + tab).classList.add('active');
-  if (tab === 'news'   && document.getElementById('news-list').querySelector('.loading-state'))  loadNews();
-  if (tab === 'videos' && document.getElementById('video-grid').querySelector('.loading-state')) loadVideos();
+  document.getElementById('page-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if (tab==='news'   && document.getElementById('news-list').querySelector('.loading-state'))  loadNews();
+  if (tab==='videos' && document.getElementById('video-grid').querySelector('.loading-state')) loadVideos();
+  if (tab==='team'   && !currentView) loadTeamTab();
 }
 
+/* ── UTILS ── */
 function timeAgo(date) {
-  const d = (Date.now() - date) / 1000;
-  if (d < 3600)   return `${Math.floor(d / 60)}m ago`;
-  if (d < 86400)  return `${Math.floor(d / 3600)}h ago`;
-  if (d < 604800) return `${Math.floor(d / 86400)}d ago`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const d = (Date.now()-date)/1000;
+  if (d<3600)   return `${Math.floor(d/60)}m ago`;
+  if (d<86400)  return `${Math.floor(d/3600)}h ago`;
+  if (d<604800) return `${Math.floor(d/86400)}d ago`;
+  return date.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
+function logo(abbr) { return `<img class="score-logo" src="${LOGO(abbr)}" onerror="this.style.opacity=0.3">`; }
 
+/* ── NEWS ── */
 async function loadNews() {
   const list = document.getElementById('news-list');
   let all = [];
   for (const feed of RSS_FEEDS) {
     try {
-      const res  = await fetch(`${RSS2JSON}${encodeURIComponent(feed.url)}&count=15`);
+      const res  = await fetch(`${RSS2JSON}${encodeURIComponent(feed.url)}`);
       const data = await res.json();
-      if (data.items) all.push(...data.items.map(i => ({ ...i, source: feed.label })));
-    } catch (e) {}
+      if (data.items) all.push(...data.items.map(i=>({...i,source:feed.label})));
+    } catch(e) {}
   }
-  all.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-  if (!all.length) { list.innerHTML = '<div class="loading-state"><span>Could not load news.</span></div>'; return; }
+  all.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
+  if (!all.length) { list.innerHTML='<div class="loading-state"><span>Could not load news.</span></div>'; return; }
   list.innerHTML = all.map(item => {
-    const thumb = item.thumbnail || item.enclosure?.link || '';
-    return `<a class="news-card" href="${item.link || '#'}" target="_blank" rel="noopener">
-      <div class="news-thumb">
-        ${thumb ? `<img src="${thumb}" onerror="this.parentElement.innerHTML='<div class=news-thumb-fb>LV</div>'">` : '<div class="news-thumb-fb">LV</div>'}
-      </div>
+    const thumb = item.thumbnail||item.enclosure?.link||'';
+    return `<a class="news-card" href="${item.link||'#'}" target="_blank" rel="noopener">
+      <div class="news-thumb">${thumb?`<img src="${thumb}" onerror="this.parentElement.innerHTML='<div class=news-thumb-fb>LV</div>'">`:'<div class="news-thumb-fb">LV</div>'}</div>
       <div class="news-meta">
         <div class="news-source">${item.source}</div>
         <div class="news-headline">${item.title}</div>
@@ -337,13 +380,14 @@ async function loadNews() {
   }).join('');
 }
 
+/* ── VIDEOS ── */
 async function loadVideos() {
   const grid = document.getElementById('video-grid');
   try {
     const res  = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${YT_KEY}&channelId=${YT_CHANNEL}&part=snippet&order=date&maxResults=12&type=video`);
     const data = await res.json();
     if (!data.items?.length) throw new Error('empty');
-    grid.innerHTML = data.items.map(v => `
+    grid.innerHTML = data.items.map(v=>`
       <div class="video-card" onclick="window.open('https://youtube.com/watch?v=${v.id.videoId}','_blank')">
         <div class="video-thumb-wrap">
           <img src="${v.snippet.thumbnails.medium.url}" loading="lazy">
@@ -352,12 +396,269 @@ async function loadVideos() {
         <div class="video-title">${v.snippet.title}</div>
         <div class="video-date">${timeAgo(new Date(v.snippet.publishedAt))}</div>
       </div>`).join('');
-  } catch (e) {
-    grid.innerHTML = '<div class="loading-state"><span>Could not load videos.</span></div>';
+  } catch(e) {
+    grid.innerHTML='<div class="loading-state"><span>Could not load videos.</span></div>';
   }
 }
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+/* ── TEAM TAB ── */
+async function loadTeamTab() {
+  const view = autoDetectView();
+  // Check if raiders have a game today
+  try {
+    const sb = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard`).then(r=>r.json());
+    const game = sb.events?.find(e => e.competitions?.[0]?.competitors?.some(c=>c.id===RAIDERS_ID));
+    if (game) { setView('gameday'); return; }
+  } catch(e) {}
+  setView(view);
+}
+
+function setView(view) {
+  currentView = view;
+  document.querySelectorAll('.ov-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('ov-'+view).classList.add('active');
+  const titles = { draft:'2026 Draft', gameweek:'Game Week', gameday:'Game Day' };
+  document.getElementById('team-title').textContent = titles[view];
+  const content = document.getElementById('team-content');
+  content.innerHTML = '<div class="loading-state"><div class="spinner"></div><span>Loading...</span></div>';
+  if (view==='draft')    loadDraft();
+  if (view==='gameweek') loadGameWeek();
+  if (view==='gameday')  loadGameDay();
+}
+
+/* ── DRAFT VIEW ── */
+async function loadDraft() {
+  const content = document.getElementById('team-content');
+  try {
+    const res  = await fetch(`https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2026/draft/rounds?limit=10`);
+    const data = await res.json();
+
+    // Collect all Raiders picks across rounds
+    let picks = [];
+    const rounds = data.items || [];
+    for (const roundRef of rounds.slice(0,7)) {
+      try {
+        const rd = await fetch(roundRef.$ref).then(r=>r.json());
+        for (const pickRef of (rd.picks||[])) {
+          try {
+            const pick = await fetch(pickRef.$ref).then(r=>r.json());
+            if (pick.team?.$ref?.includes(`/${RAIDERS_ID}`)) {
+              const athlete = pick.athlete ? await fetch(pick.athlete.$ref).then(r=>r.json()).catch(()=>null) : null;
+              picks.push({
+                overall: pick.overall,
+                round: pick.round,
+                name: athlete ? (athlete.displayName||athlete.fullName||'Unknown') : 'TBD',
+                position: athlete?.position?.abbreviation || '',
+                college: athlete?.college?.name || athlete?.birthPlace?.city || '',
+              });
+            }
+          } catch(e) {}
+        }
+      } catch(e) {}
+    }
+
+    if (!picks.length) {
+      content.innerHTML = `<div class="t-section">
+        <div class="t-label">2026 NFL Draft · April 23–25</div>
+        <div class="t-card"><div style="color:var(--tm);font-size:13px;text-align:center;padding:20px 0">Raiders hold the #1 overall pick.<br>Draft begins April 23 in Pittsburgh.</div></div>
+      </div>`;
+      return;
+    }
+
+    content.innerHTML = `
+      <div class="t-section">
+        <div class="t-label">Raiders Draft Picks · 2026</div>
+        <div class="t-card">
+          ${picks.map(p=>`<div class="pick-row">
+            <div class="pick-num">${p.overall}</div>
+            <div class="pick-info">
+              <div class="pick-name">${p.name}</div>
+              <div class="pick-meta">${[p.position, p.college].filter(Boolean).join(' · ')}</div>
+            </div>
+            <div class="pick-round">Rd ${p.round}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+  } catch(e) {
+    // Draft hasn't happened yet — show picks info
+    content.innerHTML = `<div class="t-section">
+      <div class="t-label">2026 NFL Draft · April 23–25 · Pittsburgh</div>
+      <div class="t-card">
+        <div class="pick-row">
+          <div class="pick-num">1</div>
+          <div class="pick-info"><div class="pick-name">Pick #1 Overall</div><div class="pick-meta">Las Vegas Raiders · Round 1</div></div>
+          <div class="pick-round">Rd 1</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:var(--tm);text-align:center">Live picks will appear here during the draft</div>
+    </div>`;
+  }
+}
+
+/* ── GAME WEEK VIEW ── */
+async function loadGameWeek() {
+  const content = document.getElementById('team-content');
+  try {
+    const [teamRes, standRes, leadRes] = await Promise.all([
+      fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${RAIDERS_ID}`).then(r=>r.json()),
+      fetch(`https://site.web.api.espn.com/apis/v2/sports/football/nfl/standings?region=us&lang=en&contentorigin=espn&type=0&level=3`).then(r=>r.json()),
+      fetch(`https://site.api.espn.com/apis/site/v3/sports/football/nfl/leaders?team=${RAIDERS_ID}`).then(r=>r.json()),
+    ]);
+
+    const team   = teamRes.team;
+    const record = team?.record?.items?.[0]?.summary || '0-0';
+
+    // Standings
+    let standHTML = '';
+    try {
+      const afcWest = standRes.children?.find(c=>c.name?.includes('West') && c.abbreviation?.includes('AFC'))
+        || standRes.children?.flatMap(c=>c.children||[]).find(c=>c.name?.includes('AFC West'));
+      const entries = afcWest?.standings?.entries || afcWest?.entries || [];
+      standHTML = `<div class="t-section">
+        <div class="t-label">AFC West Standings</div>
+        <div class="t-card">
+          ${entries.map(e=>{
+            const abbr = e.team?.abbreviation?.toLowerCase()||'';
+            const isRaiders = e.team?.id === RAIDERS_ID || abbr==='lv';
+            const wins   = e.stats?.find(s=>s.name==='wins')?.value??'';
+            const losses = e.stats?.find(s=>s.name==='losses')?.value??'';
+            const ties   = e.stats?.find(s=>s.name==='ties')?.value??0;
+            const rec    = ties>0?`${wins}-${losses}-${ties}`:`${wins}-${losses}`;
+            return `<div class="stand-row">
+              <img class="stand-logo" src="${LOGO(abbr)}" onerror="this.style.opacity=0.3">
+              <span class="stand-name${isRaiders?' raiders':''}">${e.team?.displayName||abbr.toUpperCase()}</span>
+              <span class="stand-record">${rec}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    } catch(e) {}
+
+    // Leaders
+    let leadHTML = '';
+    try {
+      const cats = leadRes.leaders || [];
+      const sections = ['Passing','Rushing','Receiving'].map(cat => {
+        const c = cats.find(c=>c.displayName?.includes(cat)||c.name?.includes(cat.toLowerCase()));
+        if (!c?.leaders?.[0]) return '';
+        const l = c.leaders[0];
+        const name = l.athlete?.displayName || l.athlete?.shortName || '';
+        const val  = l.displayValue || l.value || '';
+        const img  = l.athlete?.id ? `https://a.espncdn.com/i/headshots/nfl/players/full/${l.athlete.id}.png` : '';
+        return `<div class="leader-row">
+          <img class="leader-img" src="${img}" onerror="this.style.opacity=0.3">
+          <div class="leader-info"><div class="leader-name">${name}</div><div class="leader-stat">${cat}</div></div>
+          <div class="leader-val">${val}</div>
+        </div>`;
+      }).filter(Boolean).join('');
+      if (sections) leadHTML = `<div class="t-section"><div class="t-label">Season Leaders</div><div class="t-card">${sections}</div></div>`;
+    } catch(e) {}
+
+    content.innerHTML = `
+      <div class="t-section">
+        <div class="t-label">Las Vegas Raiders</div>
+        <div class="t-card">
+          <div class="stat-row"><span class="stat-label">Record</span><span class="stat-val">${record}</span></div>
+          <div class="stat-row"><span class="stat-label">Division</span><span class="stat-val">AFC West</span></div>
+          <div class="stat-row"><span class="stat-label">Season</span><span class="stat-val">2025–26</span></div>
+        </div>
+      </div>
+      ${standHTML}
+      ${leadHTML}`;
+  } catch(e) {
+    content.innerHTML = '<div class="loading-state"><span>Could not load team data.</span></div>';
+  }
+}
+
+/* ── GAME DAY VIEW ── */
+async function loadGameDay() {
+  const content = document.getElementById('team-content');
+  try {
+    const sb   = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard`).then(r=>r.json());
+    const game = sb.events?.find(e=>e.competitions?.[0]?.competitors?.some(c=>c.id===RAIDERS_ID));
+
+    if (!game) {
+      content.innerHTML = '<div class="loading-state"><span>No Raiders game today.</span></div>';
+      return;
+    }
+
+    const comp  = game.competitions[0];
+    const home  = comp.competitors.find(c=>c.homeAway==='home');
+    const away  = comp.competitors.find(c=>c.homeAway==='away');
+    const status = comp.status?.type?.shortDetail || comp.status?.type?.description || '';
+    const homeAbbr = home?.team?.abbreviation?.toLowerCase()||'';
+    const awayAbbr = away?.team?.abbreviation?.toLowerCase()||'';
+
+    // AFC West games today
+    let afcHTML = '';
+    try {
+      const afcGames = sb.events?.filter(e =>
+        e.competitions?.[0]?.competitors?.some(c=> Object.keys(AFC_WEST).includes(c.id)) &&
+        e.id !== game.id
+      ) || [];
+      if (afcGames.length) {
+        afcHTML = `<div class="t-section"><div class="t-label">AFC West Today</div><div class="t-card">
+          ${afcGames.map(g=>{
+            const c = g.competitions[0];
+            const h = c.competitors.find(x=>x.homeAway==='home');
+            const a = c.competitors.find(x=>x.homeAway==='away');
+            const st = c.status?.type?.shortDetail||'';
+            return `<div class="afc-row">
+              <span class="afc-teams">${a?.team?.abbreviation||''} @ ${h?.team?.abbreviation||''}</span>
+              <span class="afc-score">${a?.score||0} – ${h?.score||0}</span>
+              <span class="afc-status">${st}</span>
+            </div>`;
+          }).join('')}
+        </div></div>`;
+      }
+    } catch(e) {}
+
+    // Game stats
+    let statsHTML = '';
+    try {
+      const statsRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${game.id}`).then(r=>r.json());
+      const boxscore = statsRes.boxscore;
+      const raidersBox = boxscore?.players?.find(p=>p.team?.id===RAIDERS_ID);
+      if (raidersBox) {
+        let rows = '';
+        for (const cat of raidersBox.statistics||[]) {
+          const top = cat.athletes?.[0];
+          if (!top) continue;
+          const name = top.athlete?.displayName||top.athlete?.shortName||'';
+          const val  = top.stats?.[1] ?? top.stats?.[0] ?? '';
+          rows += `<div class="stat-row"><span class="stat-label">${cat.name}</span><span class="stat-name">${name}</span><span class="stat-val">${val}</span></div>`;
+        }
+        if (rows) statsHTML = `<div class="t-section"><div class="t-label">Raiders Stats</div><div class="t-card">${rows}</div></div>`;
+      }
+    } catch(e) {}
+
+    content.innerHTML = `
+      <div class="t-section">
+        <div class="t-label">${status}</div>
+        <div class="score-card">
+          <div class="score-teams">
+            <div class="score-team">
+              <img class="score-logo" src="${LOGO(awayAbbr)}" onerror="this.style.opacity=0.3">
+              <div class="score-abbr">${away?.team?.abbreviation||''}</div>
+              <div class="score-pts">${away?.score||0}</div>
+            </div>
+            <div class="score-sep">@</div>
+            <div class="score-team">
+              <img class="score-logo" src="${LOGO(homeAbbr)}" onerror="this.style.opacity=0.3">
+              <div class="score-abbr">${home?.team?.abbreviation||''}</div>
+              <div class="score-pts">${home?.score||0}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      ${statsHTML}
+      ${afcHTML}`;
+  } catch(e) {
+    content.innerHTML = '<div class="loading-state"><span>Could not load game data.</span></div>';
+  }
+}
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 updateSchedule();
 setInterval(updateSchedule, 30000);
 </script>
