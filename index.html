@@ -401,6 +401,9 @@ async function loadVideos() {
   }
 }
 
+/* ── SEASON HELPER (matches dashboard) ── */
+const statsYear = () => (new Date().getMonth()+1) >= 9 ? new Date().getFullYear() : new Date().getFullYear()-1;
+
 /* ── TEAM TAB ── */
 async function loadTeamTab() {
   const view = autoDetectView();
@@ -425,147 +428,185 @@ function setView(view) {
   if (view==='gameday')  loadGameDay();
 }
 
-/* ── SEASON HELPER ── */
-// Returns best available season year + label
-// During offseason/preseason uses prior completed season as placeholder
-function getSeasonInfo() {
-  const now = new Date();
-  const m = now.getMonth()+1, y = now.getFullYear();
-  // NFL season runs Sept–Feb; if before Sept treat as prior season
-  if (m < 9) return { year: y-1, label: `${y-1} Season` };
-  return { year: y, label: `${y} Season` };
+/* ── PARSE STANDINGS (matches dashboard — sorted by win pct) ── */
+function parseStandings(data) {
+  if (!data?.children) return [];
+  let entries = [];
+  data.children.forEach(conf => {
+    (conf.children||[]).forEach(div => {
+      if (div.name?.includes('AFC West')) entries = div.standings?.entries || [];
+    });
+  });
+  return entries.map(e => {
+    const g = n => e.stats?.find(s=>s.name===n)?.value ?? 0;
+    const abbr = e.team?.abbreviation?.toLowerCase() || '';
+    return {
+      id:      e.team?.id || '',
+      abbr,
+      name:    e.team?.shortDisplayName || e.team?.displayName || abbr.toUpperCase(),
+      wins:    g('wins'),
+      losses:  g('losses'),
+      ties:    g('ties'),
+      pct:     parseFloat(e.stats?.find(s=>s.name==='winPercent')?.value ?? 0),
+    };
+  }).sort((a,b) => b.pct - a.pct);
 }
 
-/* ── DRAFT VIEW ── */
+/* ── DRAFT VIEW — dashboard-style layout ── */
+let draftCdInt;
 async function loadDraft() {
   const content = document.getElementById('team-content');
+  const yr = new Date().getFullYear();
 
-  // Countdown to draft
-  const draftDate = new Date('2026-04-23T20:00:00-04:00');
-  const now = new Date();
-  const msLeft = draftDate - now;
-  let countdownHTML = '';
-  if (msLeft > 0) {
-    const days  = Math.floor(msLeft / 86400000);
-    const hrs   = Math.floor((msLeft % 86400000) / 3600000);
-    const mins  = Math.floor((msLeft % 3600000) / 60000);
-    countdownHTML = `
-      <div class="t-section">
-        <div class="t-label">2026 NFL Draft · Pittsburgh</div>
-        <div class="t-card" style="text-align:center;padding:20px 16px">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:42px;font-weight:900;color:var(--silver);line-height:1">${days}<span style="font-size:18px;color:var(--tm)">d</span> ${hrs}<span style="font-size:18px;color:var(--tm)">h</span> ${mins}<span style="font-size:18px;color:var(--tm)">m</span></div>
-          <div style="font-size:11px;color:var(--tm);margin-top:6px">Until Round 1 · April 23, 8pm ET</div>
-        </div>
-      </div>`;
-  }
+  // Live second-by-second countdown
+  const draftDate = new Date(yr, 3, 23, 20, 0, 0); // April 23, 8pm local
+  clearInterval(draftCdInt);
+  function pad(n) { return String(Math.floor(n)).padStart(2,'0'); }
 
-  // Known Raiders 2026 pick slots (pre-draft)
-  const knownPicks = [
-    { overall:1,  round:1, name:'TBD', meta:'#1 Overall Pick' },
-    { overall:33, round:2, name:'TBD', meta:'Round 2' },
-    { overall:65, round:3, name:'TBD', meta:'Round 3' },
-  ];
+  // Build static shell first then fill countdown live
+  const draftPast = new Date() > new Date(yr, 3, 26);
 
-  // Try to fetch live picks from ESPN draft API
+  // Fetch draft rounds
   let picks = [];
+  let isLive = false;
   try {
-    const data = await fetch(`https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2026/draft/rounds?limit=10`).then(r=>r.json());
-    const rounds = data.items || [];
-    for (const roundRef of rounds.slice(0,7)) {
-      try {
-        const rd = await fetch(roundRef.$ref).then(r=>r.json());
-        for (const pickRef of (rd.picks||[])) {
-          try {
-            const pick = await fetch(pickRef.$ref).then(r=>r.json());
-            if (pick.team?.$ref?.includes(`/${RAIDERS_ID}`) && pick.athlete) {
-              const athlete = await fetch(pick.athlete.$ref).then(r=>r.json()).catch(()=>null);
-              picks.push({
-                overall: pick.overall,
-                round: pick.round,
-                name: athlete ? (athlete.displayName||athlete.fullName||'TBD') : 'TBD',
-                meta: [athlete?.position?.abbreviation, athlete?.college?.name].filter(Boolean).join(' · ') || `Round ${pick.round}`,
-              });
-            }
-          } catch(e) {}
-        }
-      } catch(e) {}
+    const data = await fetch(`https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/${yr}/draft/rounds`).then(r=>r.json());
+    if (data?.items) {
+      const allPicks = data.items.flatMap(round => (round.picks||[]).map(p=>({...p, roundNum: round.number})));
+      picks = allPicks.filter(p => p.team?.$ref?.includes(`/teams/${RAIDERS_ID}`));
+      const now = new Date(), md = (now.getMonth()+1)*100 + now.getDate();
+      isLive = md >= 423 && md <= 425;
     }
   } catch(e) {}
 
-  const displayPicks = picks.length ? picks : knownPicks;
-  const picksLabel   = picks.length ? 'Raiders Draft Picks · 2026' : 'Raiders Draft Slots · 2026';
+  const madeCount = picks.filter(p=>p.athlete).length;
+  const statusTxt = isLive && madeCount > 0 ? `${madeCount} of ${picks.length} Picks Made`
+    : draftPast ? `${picks.length} Picks Made`
+    : picks.length > 0 ? `${picks.length} Picks Scheduled`
+    : 'Upcoming';
 
   content.innerHTML = `
-    ${countdownHTML}
-    <div class="t-section">
-      <div class="t-label">${picksLabel}</div>
-      <div class="t-card">
-        ${displayPicks.map(p=>`<div class="pick-row">
-          <div class="pick-num">${p.overall}</div>
-          <div class="pick-info">
-            <div class="pick-name">${p.name}</div>
-            <div class="pick-meta">${p.meta}</div>
-          </div>
-          <div class="pick-round">Rd ${p.round}</div>
-        </div>`).join('')}
+    <div style="background:linear-gradient(180deg,#1a1400,#0a0a0a);border-bottom:1px solid rgba(184,150,46,.2);padding:16px 16px 12px;flex-shrink:0;margin:-0px">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;letter-spacing:3px;color:#B8962E;line-height:1">NFL DRAFT</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:var(--tm);letter-spacing:2px">${yr}</div>
       </div>
-      ${!picks.length ? `<div style="margin-top:10px;font-size:11px;color:var(--tm);text-align:center">Live picks populate here during the draft</div>` : ''}
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+        <div id="draft-dot" style="width:6px;height:6px;border-radius:50%;background:${isLive?'#B8962E':' var(--tm)'};${isLive?'animation:pulse 1s infinite':''}"></div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:${isLive?'#B8962E':'var(--tm)'}">${isLive?'Live':statusTxt}</div>
+      </div>
+      <div id="draft-cd" style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px"></div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:12px 16px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase;margin-bottom:8px">Raiders Picks</div>
+      <div id="draft-picks-list"></div>
     </div>`;
+
+  // Countdown blocks
+  function renderCd() {
+    const diff = draftDate - new Date();
+    const cdEl = document.getElementById('draft-cd');
+    if (!cdEl) return;
+    if (diff <= 0) { clearInterval(draftCdInt); cdEl.innerHTML = ''; return; }
+    const units = [
+      ['DAYS',  Math.floor(diff/86400000)],
+      ['HRS',   Math.floor((diff%86400000)/3600000)],
+      ['MIN',   Math.floor((diff%3600000)/60000)],
+      ['SEC',   Math.floor((diff%60000)/1000)],
+    ];
+    cdEl.innerHTML = units.map(([u,v])=>`
+      <div style="background:rgba(184,150,46,.07);border:1px solid rgba(184,150,46,.15);border-radius:4px;padding:6px 3px 5px;display:flex;flex-direction:column;align-items:center;gap:1px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;line-height:1;color:#B8962E">${pad(v)}</div>
+        <div style="font-size:7px;font-weight:700;letter-spacing:3px;color:rgba(184,150,46,.6);text-transform:uppercase">${u}</div>
+      </div>`).join('');
+  }
+  if (!draftPast) { renderCd(); draftCdInt = setInterval(renderCd, 1000); }
+
+  // Pick cards
+  const listEl = document.getElementById('draft-picks-list');
+  if (!listEl) return;
+
+  if (!picks.length) {
+    // Pre-draft: show known pick slots
+    const slots = [{overall:1,roundNum:1},{overall:33,roundNum:2},{overall:65,roundNum:3}];
+    listEl.innerHTML = slots.map((p,i)=>`
+      <div style="padding:8px 0;border-bottom:1px solid #1e1e1e;display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center">
+        <div style="display:flex;flex-direction:column;align-items:center;background:rgba(184,150,46,.08);border:1px solid rgba(184,150,46,.15);border-radius:3px;padding:4px 3px;gap:1px">
+          <div style="font-size:7px;font-weight:700;letter-spacing:2px;color:rgba(184,150,46,.6);text-transform:uppercase">RD ${p.roundNum}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#B8962E;line-height:1">${p.overall}</div>
+        </div>
+        <div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:var(--tp);letter-spacing:1px">TBD</div>
+          <div style="font-size:9px;color:var(--tm);letter-spacing:.5px">Selection Pending</div>
+        </div>
+      </div>`).join('') + `<div style="padding:14px 0;font-size:11px;color:var(--tm);text-align:center;letter-spacing:1px">Live picks appear here during the draft</div>`;
+    return;
+  }
+
+  listEl.innerHTML = picks.map((p,i)=>{
+    const athlete = p.athlete;
+    const name = athlete?.displayName || athlete?.fullName || (p.status?.name==='ON_THE_CLOCK' ? 'On the Clock...' : 'TBD');
+    const meta = athlete ? `${athlete.position?.abbreviation||''}${athlete.college ? ' · '+athlete.college : ''}` : (p.status?.name==='ON_THE_CLOCK' ? 'Selection Pending' : 'Upcoming Pick');
+    const isOTC = p.status?.name === 'ON_THE_CLOCK';
+    return `<div style="padding:8px 0;border-bottom:1px solid #1e1e1e;display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center">
+      <div style="display:flex;flex-direction:column;align-items:center;background:rgba(184,150,46,.08);border:1px solid rgba(184,150,46,.15);border-radius:3px;padding:4px 3px;gap:1px">
+        <div style="font-size:7px;font-weight:700;letter-spacing:2px;color:rgba(184,150,46,.6);text-transform:uppercase">RD ${p.roundNum}</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:#B8962E;line-height:1">${p.overall}</div>
+      </div>
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:${isOTC?'#B8962E':'var(--tp)'};letter-spacing:1px">${name}</div>
+        <div style="font-size:9px;color:var(--tm);letter-spacing:.5px">${meta}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 /* ── GAME WEEK VIEW ── */
 async function loadGameWeek() {
   const content = document.getElementById('team-content');
-  const { year, label } = getSeasonInfo();
+  const yr = statsYear();
+  const label = `${yr} Season`;
 
   try {
-    const [teamRes, standRes, leadRes] = await Promise.all([
-      fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${RAIDERS_ID}`).then(r=>r.json()),
-      fetch(`https://site.web.api.espn.com/apis/v2/sports/football/nfl/standings?region=us&lang=en&contentorigin=espn&type=0&level=3&season=${year}`).then(r=>r.json()),
-      fetch(`https://site.api.espn.com/apis/site/v3/sports/football/nfl/leaders?team=${RAIDERS_ID}&season=${year}`).then(r=>r.json()),
+    const [standRes, leadRes] = await Promise.all([
+      fetch(`https://site.web.api.espn.com/apis/v2/sports/football/nfl/standings?region=us&lang=en&contentorigin=espn&type=0&level=3&sort=winpercent:desc,wins:desc,pointdifferential:desc`).then(r=>r.json()),
+      fetch(`https://site.api.espn.com/apis/site/v3/sports/football/nfl/leaders?season=${yr}&team=${RAIDERS_ID}`).then(r=>r.json()),
     ]);
 
-    const team   = teamRes.team;
-    const record = team?.record?.items?.[0]?.summary || '–';
+    // Standings — sorted by dashboard's parseStandings
+    const standings = parseStandings(standRes);
+    const raiders = standings.find(t => t.id === RAIDERS_ID || t.abbr === 'lv');
+    const record = raiders ? `${raiders.wins}-${raiders.losses}${raiders.ties > 0 ? '-'+raiders.ties : ''}` : '–';
 
-    // Standings
     let standHTML = '';
-    try {
-      const afcWest = standRes.children?.find(c=>c.name?.includes('West') && c.abbreviation?.includes('AFC'))
-        || standRes.children?.flatMap(c=>c.children||[]).find(c=>c.name?.includes('AFC West'));
-      const entries = afcWest?.standings?.entries || afcWest?.entries || [];
-      if (entries.length) {
-        standHTML = `<div class="t-section">
-          <div class="t-label">AFC West · ${label}</div>
-          <div class="t-card">
-            ${entries.map(e=>{
-              const abbr = e.team?.abbreviation?.toLowerCase()||'';
-              const isRaiders = e.team?.id===RAIDERS_ID || abbr==='lv';
-              const wins   = e.stats?.find(s=>s.name==='wins')?.value??'';
-              const losses = e.stats?.find(s=>s.name==='losses')?.value??'';
-              const ties   = e.stats?.find(s=>s.name==='ties')?.value??0;
-              const rec    = ties>0?`${wins}-${losses}-${ties}`:`${wins}-${losses}`;
-              return `<div class="stand-row">
-                <img class="stand-logo" src="${LOGO(abbr)}" onerror="this.style.opacity=0.3">
-                <span class="stand-name${isRaiders?' raiders':''}">${e.team?.displayName||abbr.toUpperCase()}</span>
-                <span class="stand-record">${rec}</span>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>`;
-      }
-    } catch(e) {}
+    if (standings.length) {
+      standHTML = `<div class="t-section">
+        <div class="t-label">AFC West · ${label}</div>
+        <div class="t-card">
+          ${standings.map((t,i)=>{
+            const isRaiders = t.id === RAIDERS_ID || t.abbr === 'lv';
+            const rec = t.ties > 0 ? `${t.wins}-${t.losses}-${t.ties}` : `${t.wins}-${t.losses}`;
+            return `<div class="stand-row">
+              <span style="font-size:10px;color:var(--tm);min-width:14px;text-align:center">${i+1}</span>
+              <img class="stand-logo" src="${LOGO(t.abbr)}" onerror="this.style.opacity=0.3">
+              <span class="stand-name${isRaiders?' raiders':''}">${t.name}</span>
+              <span class="stand-record">${rec}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
 
-    // Leaders
+    // Leaders — use leaders.categories per dashboard
     let leadHTML = '';
     try {
-      const cats = leadRes.leaders || [];
+      const cats = leadRes?.leaders?.categories || leadRes?.leaders || [];
       const sections = ['Passing','Rushing','Receiving'].map(cat => {
-        const c = cats.find(c=>c.displayName?.includes(cat)||c.name?.includes(cat.toLowerCase()));
+        const c = cats.find(c => c.displayName?.includes(cat) || c.name?.toLowerCase().includes(cat.toLowerCase()));
         if (!c?.leaders?.[0]) return '';
         const l = c.leaders[0];
         const name = l.athlete?.displayName || l.athlete?.shortName || '';
-        const val  = l.displayValue || l.value || '';
+        const val  = l.displayValue || String(l.value||'');
         const img  = l.athlete?.id ? `https://a.espncdn.com/i/headshots/nfl/players/full/${l.athlete.id}.png` : '';
         return `<div class="leader-row">
           <img class="leader-img" src="${img}" onerror="this.style.opacity=0.3">
@@ -573,7 +614,7 @@ async function loadGameWeek() {
           <div class="leader-val">${val}</div>
         </div>`;
       }).filter(Boolean).join('');
-      if (sections) leadHTML = `<div class="t-section"><div class="t-label">Leaders · ${label}</div><div class="t-card">${sections}</div></div>`;
+      if (sections) leadHTML = `<div class="t-section"><div class="t-label">Season Leaders · ${label}</div><div class="t-card">${sections}</div></div>`;
     } catch(e) {}
 
     content.innerHTML = `
@@ -591,61 +632,31 @@ async function loadGameWeek() {
   }
 }
 
-/* ── GAME DAY VIEW ── */
+/* ── GAME DAY VIEW — shows last game when no game today ── */
 async function loadGameDay() {
   const content = document.getElementById('team-content');
-  try {
-    const sb   = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard`).then(r=>r.json());
-    const game = sb.events?.find(e=>e.competitions?.[0]?.competitors?.some(c=>c.id===RAIDERS_ID));
 
-    if (!game) {
-      content.innerHTML = '<div class="loading-state"><span>No Raiders game today.</span></div>';
-      return;
-    }
-
-    const comp  = game.competitions[0];
-    const home  = comp.competitors.find(c=>c.homeAway==='home');
-    const away  = comp.competitors.find(c=>c.homeAway==='away');
-    const status = comp.status?.type?.shortDetail || comp.status?.type?.description || '';
+  async function renderGame(game, isRecap) {
+    const comp    = game.competitions[0];
+    const home    = comp.competitors.find(c=>c.homeAway==='home');
+    const away    = comp.competitors.find(c=>c.homeAway==='away');
+    const status  = isRecap
+      ? `Final · ${new Date(game.date).toLocaleDateString('en-US',{month:'short',day:'numeric'})}`
+      : (comp.status?.type?.shortDetail || comp.status?.type?.description || '');
     const homeAbbr = home?.team?.abbreviation?.toLowerCase()||'';
     const awayAbbr = away?.team?.abbreviation?.toLowerCase()||'';
 
-    // AFC West games today
-    let afcHTML = '';
-    try {
-      const afcGames = sb.events?.filter(e =>
-        e.competitions?.[0]?.competitors?.some(c=> Object.keys(AFC_WEST).includes(c.id)) &&
-        e.id !== game.id
-      ) || [];
-      if (afcGames.length) {
-        afcHTML = `<div class="t-section"><div class="t-label">AFC West Today</div><div class="t-card">
-          ${afcGames.map(g=>{
-            const c = g.competitions[0];
-            const h = c.competitors.find(x=>x.homeAway==='home');
-            const a = c.competitors.find(x=>x.homeAway==='away');
-            const st = c.status?.type?.shortDetail||'';
-            return `<div class="afc-row">
-              <span class="afc-teams">${a?.team?.abbreviation||''} @ ${h?.team?.abbreviation||''}</span>
-              <span class="afc-score">${a?.score||0} – ${h?.score||0}</span>
-              <span class="afc-status">${st}</span>
-            </div>`;
-          }).join('')}
-        </div></div>`;
-      }
-    } catch(e) {}
-
-    // Game stats
+    // Box score stats
     let statsHTML = '';
     try {
-      const statsRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${game.id}`).then(r=>r.json());
-      const boxscore = statsRes.boxscore;
-      const raidersBox = boxscore?.players?.find(p=>p.team?.id===RAIDERS_ID);
-      if (raidersBox) {
+      const bs = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${game.id}`).then(r=>r.json());
+      const rBox = bs.boxscore?.players?.find(p=>p.team?.id===RAIDERS_ID);
+      if (rBox) {
         let rows = '';
-        for (const cat of raidersBox.statistics||[]) {
+        for (const cat of rBox.statistics||[]) {
           const top = cat.athletes?.[0];
           if (!top) continue;
-          const name = top.athlete?.displayName||top.athlete?.shortName||'';
+          const name = top.athlete?.displayName || top.athlete?.shortName || '';
           const val  = top.stats?.[1] ?? top.stats?.[0] ?? '';
           rows += `<div class="stat-row"><span class="stat-label">${cat.name}</span><span class="stat-name">${name}</span><span class="stat-val">${val}</span></div>`;
         }
@@ -672,8 +683,22 @@ async function loadGameDay() {
           </div>
         </div>
       </div>
-      ${statsHTML}
-      ${afcHTML}`;
+      ${statsHTML}`;
+  }
+
+  try {
+    // Check for live/today game first
+    const sb   = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard`).then(r=>r.json());
+    const live  = sb.events?.find(e=>e.competitions?.[0]?.competitors?.some(c=>c.id===RAIDERS_ID));
+    if (live) { await renderGame(live, false); return; }
+
+    // No game today — fetch last completed game from schedule
+    const sched = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${RAIDERS_ID}/schedule?season=${statsYear()}`).then(r=>r.json());
+    const completed = (sched.events||[]).filter(e=>e.competitions?.[0]?.status?.type?.state==='post');
+    const last = completed[completed.length-1];
+    if (last) { await renderGame(last, true); return; }
+
+    content.innerHTML = '<div class="loading-state"><span>No recent game data available.</span></div>';
   } catch(e) {
     content.innerHTML = '<div class="loading-state"><span>Could not load game data.</span></div>';
   }
