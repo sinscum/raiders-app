@@ -644,24 +644,26 @@ async function loadGameWeek() {
         </div>`;
       };
 
-      const scorOff  = getStat('scoring','pointsPerGame') || getStat('scoring','totalPoints');
-      const scorDef  = getStat('defensive','pointsAllowedPerGame') || getStat('defensive','pointsAllowed');
-      const passOff  = getStat('passing','passingYardsPerGame') || getStat('passing','netPassingYards');
-      const rushOff  = getStat('rushing','rushingYardsPerGame') || getStat('rushing','rushingYards');
-      const passDef  = getStat('defensive','passingYardsAllowedPerGame') || getStat('defensive','netPassingYardsAllowed');
-      const rushDef  = getStat('defensive','rushingYardsAllowedPerGame') || getStat('defensive','rushingYardsAllowed');
-      const tov      = getStat('miscellaneous','turnovers') || getStat('scoring','turnovers');
-      const sacks    = getStat('defensive','sacks') || getStat('miscellaneous','sacks');
+      // Confirmed stat names from ESPN endpoint (debug verified)
+      const scorOff  = getStat('scoring','totalPointsPerGame');
+      const totalOff = getStat('passing','netYardsPerGame');
+      const passOff  = getStat('passing','netPassingYardsPerGame');
+      const rushOff  = getStat('rushing','rushingYardsPerGame');
+      const sacks    = getStat('defensive','sacks');
+      const ints     = getStat('passing','interceptions');
+      const fumbles  = getStat('general','fumblesLost');
+      const thirdDwn = getStat('miscellaneous','fourthDownConvPct') || getStat('miscellaneous','thirdDownAttempts');
+      const redzone  = getStat('miscellaneous','redzoneScoringPct');
 
       const rows = [
         rankRow('Scoring Off', scorOff),
-        rankRow('Scoring Def', scorDef),
-        rankRow('Pass Off', passOff),
-        rankRow('Rush Off', rushOff),
-        rankRow('Pass Def', passDef),
-        rankRow('Rush Def', rushDef),
-        rankRow('Turnovers', tov),
+        rankRow('Total Offense', totalOff),
+        rankRow('Pass Offense', passOff),
+        rankRow('Rush Offense', rushOff),
         rankRow('Sacks', sacks),
+        rankRow('Interceptions', ints),
+        rankRow('Fumbles Lost', fumbles),
+        rankRow('Red Zone %', redzone),
       ].filter(Boolean).join('');
 
       if (rows) rankHTML = `<div class="t-section"><div class="t-label">Team Rankings · ${label}</div><div class="t-card">${rows}</div></div>`;
@@ -784,13 +786,21 @@ async function loadGameDay() {
       const rRB = topAth(rBox,'rush'), oRB = topAth(oBox,'rush');
       const rWR = topAth(rBox,'receiv'), oWR = topAth(oBox,'receiv');
 
-      // Team stats
-      const tStat = (box, name) => box?.statistics?.find(s=>s.name===name)?.displayValue || '--';
-      const rPass = tStat(rBox,'netPassingYards')||tStat(rBox,'passingYards');
-      const oPass = tStat(oBox,'netPassingYards')||tStat(oBox,'passingYards');
-      const rRush = tStat(rBox,'rushingYards'), oRush = tStat(oBox,'rushingYards');
-      const rTOV  = tStat(rBox,'turnovers'),   oTOV  = tStat(oBox,'turnovers');
-      const rSack = tStat(rBox,'sacks'),        oSack = tStat(oBox,'sacks');
+      // Team stats from boxscore.teams (correct location per debug)
+      const bsTeams = bs.boxscore?.teams || [];
+      const rTeamBox = bsTeams.find(t => String(t.team?.id) === String(RAIDERS_ID));
+      const oTeamBox = bsTeams.find(t => String(t.team?.id) !== String(RAIDERS_ID));
+      const tStat = (t, name) => t?.statistics?.find(s=>s.name===name)?.displayValue || '--';
+      const rTotalYds = tStat(rTeamBox,'totalYards');
+      const oTotalYds = tStat(oTeamBox,'totalYards');
+      const rYPP    = tStat(rTeamBox,'yardsPerPlay');
+      const oYPP    = tStat(oTeamBox,'yardsPerPlay');
+      const r3rd    = tStat(rTeamBox,'thirdDownEff');
+      const o3rd    = tStat(oTeamBox,'thirdDownEff');
+      const r4th    = tStat(rTeamBox,'fourthDownEff');
+      const o4th    = tStat(oTeamBox,'fourthDownEff');
+      const rFD     = tStat(rTeamBox,'firstDowns');
+      const oFD     = tStat(oTeamBox,'firstDowns');
 
       // Standings
       const standings = parseStandings(standRes);
@@ -854,10 +864,11 @@ async function loadGameDay() {
             <div></div>
             <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--tm);text-transform:uppercase;text-align:right">${oppLabel}</div>
           </div>
-          ${tsRow('PASS YDS', rPass, oPass)}
-          ${tsRow('RUSH YDS', rRush, oRush)}
-          ${tsRow('TURNOVERS', rTOV, oTOV)}
-          ${tsRow('SACKS', rSack, oSack)}
+          ${tsRow('TOTAL YDS', rTotalYds, oTotalYds)}
+          ${tsRow('YDS/PLAY',  rYPP, oYPP)}
+          ${tsRow('3RD DOWN',  r3rd, o3rd)}
+          ${tsRow('4TH DOWN',  r4th, o4th)}
+          ${tsRow('1ST DOWNS', rFD,  oFD)}
         </div>`;
 
     } catch(e) {
