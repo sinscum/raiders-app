@@ -568,9 +568,10 @@ async function loadGameWeek() {
   const label = `${yr} Season`;
 
   try {
-    const [standRes, leadRes] = await Promise.all([
+    const [standRes, leadRes, statsRes] = await Promise.all([
       fetch(`https://site.web.api.espn.com/apis/v2/sports/football/nfl/standings?region=us&lang=en&contentorigin=espn&type=0&level=3&sort=winpercent:desc,wins:desc,pointdifferential:desc`).then(r=>r.json()),
       fetch(`https://site.api.espn.com/apis/site/v3/sports/football/nfl/leaders?season=${yr}&team=${RAIDERS_ID}`).then(r=>r.json()),
+      fetch(`https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/${yr}/types/2/teams/${RAIDERS_ID}/statistics`).then(r=>r.json()).catch(()=>null),
     ]);
 
     // Standings — sorted by dashboard's parseStandings
@@ -617,6 +618,55 @@ async function loadGameWeek() {
       if (sections) leadHTML = `<div class="t-section"><div class="t-label">Season Leaders · ${label}</div><div class="t-card">${sections}</div></div>`;
     } catch(e) {}
 
+    // Rankings from team stats
+    let rankHTML = '';
+    try {
+      const splits = statsRes?.splits?.categories || [];
+      const getStat = (catName, statName) => {
+        const cat = splits.find(c => c.name?.toLowerCase().includes(catName.toLowerCase()));
+        const s = cat?.stats?.find(s => s.name === statName || s.displayName?.toLowerCase().includes(statName.toLowerCase()));
+        return s ? { val: s.displayValue || s.value, rank: s.rank } : null;
+      };
+      const rankBadge = (rank) => {
+        if (!rank) return '';
+        const n = parseInt(rank);
+        const color = n <= 10 ? '#4aff8a' : n <= 20 ? '#B8962E' : '#e05555';
+        return `<span style="font-size:10px;font-weight:700;color:${color};margin-left:6px">#${n}</span>`;
+      };
+      const rankRow = (label, stat) => {
+        if (!stat) return '';
+        return `<div class="stat-row">
+          <span class="stat-label">${label}</span>
+          <span style="display:flex;align-items:center">
+            <span class="stat-val">${stat.val}</span>
+            ${rankBadge(stat.rank)}
+          </span>
+        </div>`;
+      };
+
+      const scorOff  = getStat('scoring','pointsPerGame') || getStat('scoring','totalPoints');
+      const scorDef  = getStat('defensive','pointsAllowedPerGame') || getStat('defensive','pointsAllowed');
+      const passOff  = getStat('passing','passingYardsPerGame') || getStat('passing','netPassingYards');
+      const rushOff  = getStat('rushing','rushingYardsPerGame') || getStat('rushing','rushingYards');
+      const passDef  = getStat('defensive','passingYardsAllowedPerGame') || getStat('defensive','netPassingYardsAllowed');
+      const rushDef  = getStat('defensive','rushingYardsAllowedPerGame') || getStat('defensive','rushingYardsAllowed');
+      const tov      = getStat('miscellaneous','turnovers') || getStat('scoring','turnovers');
+      const sacks    = getStat('defensive','sacks') || getStat('miscellaneous','sacks');
+
+      const rows = [
+        rankRow('Scoring Off', scorOff),
+        rankRow('Scoring Def', scorDef),
+        rankRow('Pass Off', passOff),
+        rankRow('Rush Off', rushOff),
+        rankRow('Pass Def', passDef),
+        rankRow('Rush Def', rushDef),
+        rankRow('Turnovers', tov),
+        rankRow('Sacks', sacks),
+      ].filter(Boolean).join('');
+
+      if (rows) rankHTML = `<div class="t-section"><div class="t-label">Team Rankings · ${label}</div><div class="t-card">${rows}</div></div>`;
+    } catch(e) {}
+
     content.innerHTML = `
       <div class="t-section">
         <div class="t-label">Las Vegas Raiders · ${label}</div>
@@ -626,6 +676,7 @@ async function loadGameWeek() {
         </div>
       </div>
       ${standHTML}
+      ${rankHTML}
       ${leadHTML}`;
   } catch(e) {
     content.innerHTML = '<div class="loading-state"><span>Could not load team data.</span></div>';
@@ -650,8 +701,9 @@ async function loadGameDay() {
       ? `${comp.status?.period ? ['Q1','Q2','Q3','Q4','OT'][comp.status.period-1]||'OT' : ''} · ${comp.status?.displayClock||''}`
       : isFinal ? new Date(game.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
 
-    const rScore = raiders?.score ?? '--';
-    const oScore = opp?.score ?? '--';
+    const parseScore = s => typeof s === 'object' ? (s?.displayValue ?? s?.value ?? '--') : (s ?? '--');
+    const rScore = parseScore(raiders?.score);
+    const oScore = parseScore(opp?.score);
     const rRec   = raiders?.records?.[0]?.summary || '';
     const oRec   = opp?.records?.[0]?.summary || '';
     const oppAbbr = (opp?.team?.abbreviation||'OPP').toLowerCase();
@@ -759,51 +811,48 @@ async function loadGameDay() {
           </div>
         </div>` : '';
 
-      const plRow = (label, rA, oA, ySub) => `
-        <div style="display:grid;grid-template-columns:1fr 50px 1fr;gap:6px;align-items:center;padding:8px 0;border-bottom:0.5px solid #1a1a1a">
-          <div>
-            ${rA?.id ? `<img style="width:28px;height:21px;object-fit:cover;border-radius:2px;opacity:.85;margin-bottom:2px;display:block" src="${hs(rA.id)}" onerror="this.style.display='none'">` : ''}
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--tp);letter-spacing:.5px;line-height:1">${rA?.name||'--'}</div>
-            <div style="font-size:9px;color:var(--tm);margin-top:1px">${ySub(rA)}</div>
+      // Stacked player row — one player per row, clear label + yardage
+      const plRow = (teamLabel, teamColor, athlete, statSub) => {
+        if (!athlete && !teamLabel) return '';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid #1a1a1a">
+          ${athlete?.id ? `<img style="width:36px;height:27px;object-fit:cover;border-radius:3px;opacity:.9;flex-shrink:0" src="${hs(athlete.id)}" onerror="this.style.display='none'">` : '<div style="width:36px;height:27px;border-radius:3px;background:var(--s3);flex-shrink:0"></div>'}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:9px;font-weight:700;letter-spacing:2px;color:${teamColor};text-transform:uppercase;margin-bottom:2px">${teamLabel}</div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--tp);line-height:1">${athlete?.name||'--'}</div>
+            <div style="font-size:10px;color:var(--tm);margin-top:1px">${statSub(athlete)}</div>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
-            <div style="font-size:7px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase">${label}</div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--silver);line-height:1">${yds(rA)}</div>
-            <div style="font-size:7px;color:var(--tm)">·</div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--tm);line-height:1">${yds(oA)}</div>
-          </div>
-          <div style="text-align:right">
-            ${oA?.id ? `<img style="width:28px;height:21px;object-fit:cover;border-radius:2px;opacity:.75;margin-bottom:2px;display:block;margin-left:auto" src="${hs(oA.id)}" onerror="this.style.display='none'">` : ''}
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--tm);letter-spacing:.5px;line-height:1">${oA?.name||'--'}</div>
-            <div style="font-size:9px;color:var(--tm);margin-top:1px;text-align:right">${ySub(oA)}</div>
-          </div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--silver);flex-shrink:0">${yds(athlete)}</div>
         </div>`;
+      };
 
       const tsRow = (label, rVal, oVal) => `
-        <div style="display:grid;grid-template-columns:1fr 80px 1fr;gap:4px;align-items:center;padding:5px 0;border-bottom:0.5px solid #1a1a1a">
+        <div style="display:grid;grid-template-columns:1fr 80px 1fr;gap:4px;align-items:center;padding:6px 0;border-bottom:0.5px solid #1a1a1a">
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--tp)">${rVal}</div>
           <div style="font-size:8px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase;text-align:center">${label}</div>
           <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:var(--tm);text-align:right">${oVal}</div>
         </div>`;
 
+      const oppLabel = (opp?.team?.abbreviation||'OPP').toUpperCase();
+
       scrollBody.innerHTML = `
         ${divHTML}
         <div style="margin-bottom:16px">
-          <div style="display:grid;grid-template-columns:1fr 50px 1fr;gap:6px;margin-bottom:6px">
-            <div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--silver);text-transform:uppercase">LAS VEGAS</div>
-            <div></div>
-            <div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase;text-align:right">${(opp?.team?.abbreviation||'OPP').toUpperCase()}</div>
-          </div>
-          ${plRow('PASS YDS', rQB, oQB, psub)}
-          ${plRow('RUSH YDS', rRB, oRB, rsub)}
-          ${plRow('REC YDS',  rWR, oWR, resub)}
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase;border-bottom:0.5px solid #1e1e1e;padding-bottom:4px;margin-bottom:4px">Passing</div>
+          ${plRow('LAS VEGAS', 'var(--silver)', rQB, psub)}
+          ${plRow(oppLabel, 'var(--tm)', oQB, psub)}
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase;border-bottom:0.5px solid #1e1e1e;padding-bottom:4px;margin-bottom:4px;margin-top:12px">Rushing</div>
+          ${plRow('LAS VEGAS', 'var(--silver)', rRB, rsub)}
+          ${plRow(oppLabel, 'var(--tm)', oRB, rsub)}
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase;border-bottom:0.5px solid #1e1e1e;padding-bottom:4px;margin-bottom:4px;margin-top:12px">Receiving</div>
+          ${plRow('LAS VEGAS', 'var(--silver)', rWR, resub)}
+          ${plRow(oppLabel, 'var(--tm)', oWR, resub)}
         </div>
         <div>
           <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--tm);text-transform:uppercase;border-bottom:0.5px solid #1e1e1e;padding-bottom:4px;margin-bottom:4px">Team Stats</div>
           <div style="display:grid;grid-template-columns:1fr 80px 1fr;gap:4px;margin-bottom:6px">
             <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--silver);text-transform:uppercase">LV</div>
             <div></div>
-            <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--tm);text-transform:uppercase;text-align:right">${(opp?.team?.abbreviation||'OPP').toUpperCase()}</div>
+            <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--tm);text-transform:uppercase;text-align:right">${oppLabel}</div>
           </div>
           ${tsRow('PASS YDS', rPass, oPass)}
           ${tsRow('RUSH YDS', rRush, oRush)}
