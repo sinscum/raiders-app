@@ -404,7 +404,6 @@ async function loadVideos() {
 /* ── TEAM TAB ── */
 async function loadTeamTab() {
   const view = autoDetectView();
-  // Check if raiders have a game today
   try {
     const sb = await fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard`).then(r=>r.json());
     const game = sb.events?.find(e => e.competitions?.[0]?.competitors?.some(c=>c.id===RAIDERS_ID));
@@ -426,15 +425,51 @@ function setView(view) {
   if (view==='gameday')  loadGameDay();
 }
 
+/* ── SEASON HELPER ── */
+// Returns best available season year + label
+// During offseason/preseason uses prior completed season as placeholder
+function getSeasonInfo() {
+  const now = new Date();
+  const m = now.getMonth()+1, y = now.getFullYear();
+  // NFL season runs Sept–Feb; if before Sept treat as prior season
+  if (m < 9) return { year: y-1, label: `${y-1} Season` };
+  return { year: y, label: `${y} Season` };
+}
+
 /* ── DRAFT VIEW ── */
 async function loadDraft() {
   const content = document.getElementById('team-content');
-  try {
-    const res  = await fetch(`https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2026/draft/rounds?limit=10`);
-    const data = await res.json();
 
-    // Collect all Raiders picks across rounds
-    let picks = [];
+  // Countdown to draft
+  const draftDate = new Date('2026-04-23T20:00:00-04:00');
+  const now = new Date();
+  const msLeft = draftDate - now;
+  let countdownHTML = '';
+  if (msLeft > 0) {
+    const days  = Math.floor(msLeft / 86400000);
+    const hrs   = Math.floor((msLeft % 86400000) / 3600000);
+    const mins  = Math.floor((msLeft % 3600000) / 60000);
+    countdownHTML = `
+      <div class="t-section">
+        <div class="t-label">2026 NFL Draft · Pittsburgh</div>
+        <div class="t-card" style="text-align:center;padding:20px 16px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:42px;font-weight:900;color:var(--silver);line-height:1">${days}<span style="font-size:18px;color:var(--tm)">d</span> ${hrs}<span style="font-size:18px;color:var(--tm)">h</span> ${mins}<span style="font-size:18px;color:var(--tm)">m</span></div>
+          <div style="font-size:11px;color:var(--tm);margin-top:6px">Until Round 1 · April 23, 8pm ET</div>
+        </div>
+      </div>`;
+  }
+
+  // Known Raiders 2026 pick slots (pre-draft)
+  const knownPicks = [
+    { overall:1,  round:1, name:'TBD', meta:'#1 Overall Pick' },
+    { overall:33, round:2, name:'TBD', meta:'Round 2' },
+    { overall:65, round:3, name:'TBD', meta:'Round 3' },
+  ];
+
+  // Try to fetch live picks from ESPN draft API
+  let picks = [];
+  try {
+    const data = await fetch(`https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2026/draft/rounds?limit=10`).then(r=>r.json());
     const rounds = data.items || [];
     for (const roundRef of rounds.slice(0,7)) {
       try {
@@ -442,71 +477,56 @@ async function loadDraft() {
         for (const pickRef of (rd.picks||[])) {
           try {
             const pick = await fetch(pickRef.$ref).then(r=>r.json());
-            if (pick.team?.$ref?.includes(`/${RAIDERS_ID}`)) {
-              const athlete = pick.athlete ? await fetch(pick.athlete.$ref).then(r=>r.json()).catch(()=>null) : null;
+            if (pick.team?.$ref?.includes(`/${RAIDERS_ID}`) && pick.athlete) {
+              const athlete = await fetch(pick.athlete.$ref).then(r=>r.json()).catch(()=>null);
               picks.push({
                 overall: pick.overall,
                 round: pick.round,
-                name: athlete ? (athlete.displayName||athlete.fullName||'Unknown') : 'TBD',
-                position: athlete?.position?.abbreviation || '',
-                college: athlete?.college?.name || athlete?.birthPlace?.city || '',
+                name: athlete ? (athlete.displayName||athlete.fullName||'TBD') : 'TBD',
+                meta: [athlete?.position?.abbreviation, athlete?.college?.name].filter(Boolean).join(' · ') || `Round ${pick.round}`,
               });
             }
           } catch(e) {}
         }
       } catch(e) {}
     }
+  } catch(e) {}
 
-    if (!picks.length) {
-      content.innerHTML = `<div class="t-section">
-        <div class="t-label">2026 NFL Draft · April 23–25</div>
-        <div class="t-card"><div style="color:var(--tm);font-size:13px;text-align:center;padding:20px 0">Raiders hold the #1 overall pick.<br>Draft begins April 23 in Pittsburgh.</div></div>
-      </div>`;
-      return;
-    }
+  const displayPicks = picks.length ? picks : knownPicks;
+  const picksLabel   = picks.length ? 'Raiders Draft Picks · 2026' : 'Raiders Draft Slots · 2026';
 
-    content.innerHTML = `
-      <div class="t-section">
-        <div class="t-label">Raiders Draft Picks · 2026</div>
-        <div class="t-card">
-          ${picks.map(p=>`<div class="pick-row">
-            <div class="pick-num">${p.overall}</div>
-            <div class="pick-info">
-              <div class="pick-name">${p.name}</div>
-              <div class="pick-meta">${[p.position, p.college].filter(Boolean).join(' · ')}</div>
-            </div>
-            <div class="pick-round">Rd ${p.round}</div>
-          </div>`).join('')}
-        </div>
-      </div>`;
-  } catch(e) {
-    // Draft hasn't happened yet — show picks info
-    content.innerHTML = `<div class="t-section">
-      <div class="t-label">2026 NFL Draft · April 23–25 · Pittsburgh</div>
+  content.innerHTML = `
+    ${countdownHTML}
+    <div class="t-section">
+      <div class="t-label">${picksLabel}</div>
       <div class="t-card">
-        <div class="pick-row">
-          <div class="pick-num">1</div>
-          <div class="pick-info"><div class="pick-name">Pick #1 Overall</div><div class="pick-meta">Las Vegas Raiders · Round 1</div></div>
-          <div class="pick-round">Rd 1</div>
-        </div>
+        ${displayPicks.map(p=>`<div class="pick-row">
+          <div class="pick-num">${p.overall}</div>
+          <div class="pick-info">
+            <div class="pick-name">${p.name}</div>
+            <div class="pick-meta">${p.meta}</div>
+          </div>
+          <div class="pick-round">Rd ${p.round}</div>
+        </div>`).join('')}
       </div>
-      <div style="margin-top:12px;font-size:11px;color:var(--tm);text-align:center">Live picks will appear here during the draft</div>
+      ${!picks.length ? `<div style="margin-top:10px;font-size:11px;color:var(--tm);text-align:center">Live picks populate here during the draft</div>` : ''}
     </div>`;
-  }
 }
 
 /* ── GAME WEEK VIEW ── */
 async function loadGameWeek() {
   const content = document.getElementById('team-content');
+  const { year, label } = getSeasonInfo();
+
   try {
     const [teamRes, standRes, leadRes] = await Promise.all([
       fetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${RAIDERS_ID}`).then(r=>r.json()),
-      fetch(`https://site.web.api.espn.com/apis/v2/sports/football/nfl/standings?region=us&lang=en&contentorigin=espn&type=0&level=3`).then(r=>r.json()),
-      fetch(`https://site.api.espn.com/apis/site/v3/sports/football/nfl/leaders?team=${RAIDERS_ID}`).then(r=>r.json()),
+      fetch(`https://site.web.api.espn.com/apis/v2/sports/football/nfl/standings?region=us&lang=en&contentorigin=espn&type=0&level=3&season=${year}`).then(r=>r.json()),
+      fetch(`https://site.api.espn.com/apis/site/v3/sports/football/nfl/leaders?team=${RAIDERS_ID}&season=${year}`).then(r=>r.json()),
     ]);
 
     const team   = teamRes.team;
-    const record = team?.record?.items?.[0]?.summary || '0-0';
+    const record = team?.record?.items?.[0]?.summary || '–';
 
     // Standings
     let standHTML = '';
@@ -514,24 +534,26 @@ async function loadGameWeek() {
       const afcWest = standRes.children?.find(c=>c.name?.includes('West') && c.abbreviation?.includes('AFC'))
         || standRes.children?.flatMap(c=>c.children||[]).find(c=>c.name?.includes('AFC West'));
       const entries = afcWest?.standings?.entries || afcWest?.entries || [];
-      standHTML = `<div class="t-section">
-        <div class="t-label">AFC West Standings</div>
-        <div class="t-card">
-          ${entries.map(e=>{
-            const abbr = e.team?.abbreviation?.toLowerCase()||'';
-            const isRaiders = e.team?.id === RAIDERS_ID || abbr==='lv';
-            const wins   = e.stats?.find(s=>s.name==='wins')?.value??'';
-            const losses = e.stats?.find(s=>s.name==='losses')?.value??'';
-            const ties   = e.stats?.find(s=>s.name==='ties')?.value??0;
-            const rec    = ties>0?`${wins}-${losses}-${ties}`:`${wins}-${losses}`;
-            return `<div class="stand-row">
-              <img class="stand-logo" src="${LOGO(abbr)}" onerror="this.style.opacity=0.3">
-              <span class="stand-name${isRaiders?' raiders':''}">${e.team?.displayName||abbr.toUpperCase()}</span>
-              <span class="stand-record">${rec}</span>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>`;
+      if (entries.length) {
+        standHTML = `<div class="t-section">
+          <div class="t-label">AFC West · ${label}</div>
+          <div class="t-card">
+            ${entries.map(e=>{
+              const abbr = e.team?.abbreviation?.toLowerCase()||'';
+              const isRaiders = e.team?.id===RAIDERS_ID || abbr==='lv';
+              const wins   = e.stats?.find(s=>s.name==='wins')?.value??'';
+              const losses = e.stats?.find(s=>s.name==='losses')?.value??'';
+              const ties   = e.stats?.find(s=>s.name==='ties')?.value??0;
+              const rec    = ties>0?`${wins}-${losses}-${ties}`:`${wins}-${losses}`;
+              return `<div class="stand-row">
+                <img class="stand-logo" src="${LOGO(abbr)}" onerror="this.style.opacity=0.3">
+                <span class="stand-name${isRaiders?' raiders':''}">${e.team?.displayName||abbr.toUpperCase()}</span>
+                <span class="stand-record">${rec}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }
     } catch(e) {}
 
     // Leaders
@@ -551,16 +573,15 @@ async function loadGameWeek() {
           <div class="leader-val">${val}</div>
         </div>`;
       }).filter(Boolean).join('');
-      if (sections) leadHTML = `<div class="t-section"><div class="t-label">Season Leaders</div><div class="t-card">${sections}</div></div>`;
+      if (sections) leadHTML = `<div class="t-section"><div class="t-label">Leaders · ${label}</div><div class="t-card">${sections}</div></div>`;
     } catch(e) {}
 
     content.innerHTML = `
       <div class="t-section">
-        <div class="t-label">Las Vegas Raiders</div>
+        <div class="t-label">Las Vegas Raiders · ${label}</div>
         <div class="t-card">
           <div class="stat-row"><span class="stat-label">Record</span><span class="stat-val">${record}</span></div>
           <div class="stat-row"><span class="stat-label">Division</span><span class="stat-val">AFC West</span></div>
-          <div class="stat-row"><span class="stat-label">Season</span><span class="stat-val">2025–26</span></div>
         </div>
       </div>
       ${standHTML}
